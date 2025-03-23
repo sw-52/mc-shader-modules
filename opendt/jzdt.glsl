@@ -22,6 +22,8 @@
 // Converted to GLSL by sw-52
 //
 
+#include "/modules/opendt/lib.glsl"
+
 
 
 #define average 1
@@ -45,7 +47,7 @@
 #define spowr3(a, b) (sign(a) * pow(abs(a), vec3(b)))
 
 
-const mat3 matrix_rec2020_to_xyz = mat3(
+/*const mat3 matrix_rec2020_to_xyz = mat3(
     vec3(0.636958122253f, 0.144616916776f, 0.168880969286f),
     vec3(0.262700229883f, 0.677998125553f, 0.059301715344f),
     vec3(0.000000000000f, 0.028072696179, 1.060985088348f)
@@ -54,7 +56,7 @@ const mat3 matrix_rec2020_to_xyz = mat3(
 const mat3 in_to_xyz = matrix_rec2020_to_xyz;
 mat3 xyz_to_display = inverse(matrix_rec2020_to_xyz);
 mat3 xyz_to_in = xyz_to_display;
-const mat3 display_to_xyz = matrix_rec2020_to_xyz;
+const mat3 display_to_xyz = matrix_rec2020_to_xyz;*/
 
 
 /* ##########################################################################
@@ -101,9 +103,9 @@ vec3 eotf_pq(vec3 rgb, int inverse, int jz) {
     // ITU-R Rec BT.2100-2 https://www.itu.int/rec/R-REC-BT.2100
     // ITU-R Rep BT.2390-9 https://www.itu.int/pub/R-REP-BT.2390
 
-    float Lp = 1.0f; // We normalize for hdr peak display luminance elsewhere.
-    const float m1 = 2610.0f / 16384.0f;
-    float m2 = 2523.0f / 32.0f;
+    float Lp = 1.0; // We normalize for hdr peak display luminance elsewhere.
+    const float m1 = 2610.0 / 16384.0;
+    float m2 = 2523.0 / 32.0f;
     const float c1 = 107.0f / 128.0f;
     const float c2 = 2413.0f / 128.0f;
     const float c3 = 2392.0f / 128.0f;
@@ -117,7 +119,7 @@ vec3 eotf_pq(vec3 rgb, int inverse, int jz) {
     if (inverse == 1) {
         rgb /= Lp;
         rgb = spowr3(rgb, m1);
-        // Prevent shitting of the bed when there are negatives, for JzAzBz conversion // TODO: lmao what? (comment from JzDT github)
+        // Prevent shitting of the bed when there are negatives, for JzAzBz conversion
         rgb.x = sign(rgb.x) * pow((c1 + c2 * abs(rgb.x)) / (1.0f + c3 * abs(rgb.x)), m2);
         rgb.y = sign(rgb.y) * pow((c1 + c2 * abs(rgb.y)) / (1.0f + c3 * abs(rgb.y)), m2);
         rgb.z = sign(rgb.z) * pow((c1 + c2 * abs(rgb.z)) / (1.0f + c3 * abs(rgb.z)), m2);
@@ -194,7 +196,7 @@ vec3 xyz_to_jzazbz(vec3 xyz, int cyl) {
     // Convert input XYZ D65 aligned tristimulus values into JzAzBz perceptual colorspace,
     // if cyl==1: output cylindrical JCh : J = luma, C = chroma, h = hue in radians
     const float d = -0.56;
-    const float d_0 = eps;//1.6295499532821565e-11f;
+    const float d_0 = 1e-6;//1.6295499532821565e-11f;
     vec3 lms;
     lms = xyz_to_jzlms(xyz);
     lms = eotf_pq(lms, 1, 1);
@@ -209,7 +211,7 @@ vec3 xyz_to_jzazbz(vec3 xyz, int cyl) {
 
 vec3 jzazbz_to_xyz(vec3 jz, int cyl) {
     const float d = -0.56;
-    const float d_0 = eps;//1.6295499532821565e-11f;
+    const float d_0 = 1e-6;//1.6295499532821565e-11f;
     // Convert to cartesian
     if (cyl == 1) jz = polar_to_cartesian3(jz);
 
@@ -333,9 +335,9 @@ vec3 jzdtransform(vec3 rgb) {
             rgb = pow(rgb, vec3(1.0 / eotf_p));
         } else if (eotf == 4) {
             rgb = eotf_pq(rgb, 1, 0);
-        } /*else if (eotf == 5) {
+        } else if (eotf == 5) {
             rgb = eotf_hlg(rgb, 1);
-        }*/
+        }
     } else {
         rgb = clamp01(rgb);
         float eotf_p = 2.0 + eotf * 0.2;
@@ -343,7 +345,7 @@ vec3 jzdtransform(vec3 rgb) {
             rgb = pow(rgb, vec3(eotf_p));
         } else if (eotf == 4) {
             rgb = eotf_pq(rgb, 0, 0);
-        } /*else if (eotf == 5) {
+        } else if (eotf == 5) {
             rgb = eotf_hlg(rgb, 0);
         }*/
         rgb /= ds;

@@ -4,7 +4,7 @@
 
 
 /*  OpenDRT -------------------------------------------------/
-      v0.3.2
+      v0.3.3
       Written by Jed Smith
       https://github.com/jedypod/open-display-transform
 
@@ -81,6 +81,7 @@ const mat3 matrix_arriwg4_to_xyz = mat3(vec3(0.704858320407f, 0.12976029517f, 0.
 const mat3 matrix_redwg_to_xyz = mat3(vec3(0.735275208950f, 0.068609409034f, 0.146571278572f), vec3(0.286694079638f, 0.842979073524f, -0.129673242569f), vec3(-0.079680845141f, -0.347343206406, 1.516081929207f));
 const mat3 matrix_sonysgamut3_to_xyz = mat3(vec3(0.706482713192f, 0.128801049791f, 0.115172164069f), vec3(0.270979670813f, 0.786606411221f, -0.057586082034f), vec3(-0.009677845386f, 0.004600037493f, 1.09413555865f));
 const mat3 matrix_sonysgamut3cine_to_xyz = mat3(vec3(0.599083920758f, 0.248925516115f, 0.102446490178f), vec3(0.215075820116f, 0.885068501744f, -0.100144321859f), vec3(-0.032065849545f, -0.027658390679f, 1.14878199098f));
+const mat3 matrix_vgamut_to_xyz mat3(vec3(0.679644469878f, 0.15221141244f, 0.118600044733), vec3(0.26068555009f, 0.77489446333f, -0.03558001342), vec3(-0.009310198218f, -0.004612467044f, 1.10298041602));
 const mat3 matrix_bmdwg_to_xyz = mat3(vec3(0.606538414955f, 0.220412746072f, 0.123504832387f), vec3(0.267992943525f, 0.832748472691f, -0.100741356611f), vec3(-0.029442556202f, -0.086612440646, 1.205112814903f));
 const mat3 matrix_egamut_to_xyz = mat3(vec3(0.705396831036f, 0.164041340351f, 0.081017754972f), vec3(0.280130714178f, 0.820206701756f, -0.100337378681f), vec3(-0.103781513870f, -0.072907261550, 1.265746593475f));
 const mat3 matrix_davinciwg_to_xyz = mat3(vec3(0.700622320175f, 0.148774802685f, 0.101058728993f), vec3(0.274118483067f, 0.873631775379f, -0.147750422359f), vec3(-0.098962903023f, -0.137895315886, 1.325916051865f));
@@ -94,7 +95,7 @@ const mat3 matrix_xyz_to_rec2020 = mat3(vec3(1.71665118797f, -0.355670783776f, -
 
 /* Functions for the OpenDRT Transform ---------------------------------------- */
 
-float compress_powerptoe(float x, const float p, const float x0, const float t0, int inv) {
+float compress_powerptoe_p(float x, const float p, const float x0, const float t0, int inv) {
     /* Variable slope compression function.
         p: Slope of the compression curve. Controls how compressed values are distributed. 
             p=0.0 is a clip. p=1.0 is a hyperbolic curve.
@@ -160,7 +161,7 @@ float tonescale(float x, const float Lp, const float Lg, const float Lgb, const 
 
 /*// https://www.desmos.com/calculator/gfubm2kvlu
 float powerp(float x, float p, float m) {
-    float y = x <= 0.0f ? x : x*spowf(spowf(x/m, 1.0/p) + 1.0, -p);
+    float y = x <= 0.0 ? x : x*spowf(spowf(x/m, 1.0/p) + 1.0, -p);
     return y;
 }
 
@@ -203,8 +204,8 @@ vec3 opendrtransform_v03(vec3 rgb) {
 
           If we are in an SDR mode, instead we just scale the peak so it hits display 1.0.
       */
-    // const float ds = eotf == 4 ? 0.01f : eotf == 5 ? 0.1f : 100.0f/Lp;
-    const float ds = eotf == 4 ? Lp / 10000.0 : (eotf == 5 ? Lp / 1000.0 : 1.0f);
+    // const float ds = eotf == 4 ? 0.01f : eotf == 5 ? 0.1f : 100.0/Lp;
+    const float ds = eotf == 4 ? Lp / 10000.0 : (eotf == 5 ? Lp / 1000.0 : 1.0);
 
 
 
@@ -234,7 +235,7 @@ vec3 opendrtransform_v03(vec3 rgb) {
     // Norm and RGB Ratios
     float norm = length(clampminf3(rgb, 0.0)) / sqrt(3.0);
     rgb = sdivf3f(rgb, norm);
-    rgb = clampminf3(rgb, -2.0); // Prevent bright pixels from crazy values in shadow grain
+    rgb = clampminf3(rgb, 0.0); // Prevent bright pixels from crazy values in shadow grain
 
 
     /* Purity Compression --------------------------------------- */
@@ -242,9 +243,9 @@ vec3 opendrtransform_v03(vec3 rgb) {
     /*vec3 pc_rats = rgb; TODO: Remove
 
     // minrgb with out of gamut values compressed
-    pc_rats.x = compress_powerptoe(pc_rats.x, 0.25, 0.06, 1.0, 0);
-    pc_rats.y = compress_powerptoe(pc_rats.y, 0.25, 0.2, 1.0, 0);
-    pc_rats.z = compress_powerptoe(pc_rats.z, 0.25, 0.06, 1.0, 0);
+    pc_rats.x = compress_powerptoe_p(pc_rats.x, 0.25, 0.06, 1.0, 0);
+    pc_rats.y = compress_powerptoe_p(pc_rats.y, 0.25, 0.2, 1.0, 0);
+    pc_rats.z = compress_powerptoe_p(pc_rats.z, 0.25, 0.06, 1.0, 0);
 
     // minrgb with out of gamut values compressed
     float pc_rats_mn = minf3(pc_rats);
@@ -375,9 +376,9 @@ vec3 opendrtransform_v03(vec3 rgb) {
     rgb = (sat_L * (sat_f - 1.0) + rgb) / sat_f;
 
     // last gamut compress for bottom end
-    rgb.x = compress_powerptoe(rgb.x, 0.05, 1.0, 1.0, 0);
-    rgb.y = compress_powerptoe(rgb.y, 0.05, 1.0, 1.0, 0);
-    rgb.z = compress_powerptoe(rgb.z, 0.05, 1.0, 1.0, 0);
+    rgb.x = compress_powerptoe_p(rgb.x, 0.05, 1.0, 1.0, 0);
+    rgb.y = compress_powerptoe_p(rgb.y, 0.05, 1.0, 1.0, 0);
+    rgb.z = compress_powerptoe_p(rgb.z, 0.05, 1.0, 1.0, 0);
 
     // Apply tonescale to RGB Ratios
     rgb = rgb * norm;

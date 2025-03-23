@@ -1,6 +1,10 @@
 #ifndef MODULES_OPENDT_LIB
 #define MODULES_OPENDT_LIB
 
+//
+// Converted to GLSL by sw-52
+//
+
 
 const int EOTF_lin     = 0; // Linear
 const int EOTF_srgb    = 1; // 2.2 Power - sRGB Display
@@ -9,16 +13,22 @@ const int EOTF_dci     = 3; // 2.6 Power - DCI
 const int EOTF_pq      = 4; // ST 2084 PQ
 const int EOTF_hlg     = 5; // HLG
 
+const mat3 matrix_rec709_to_xyz = mat3(
+    vec3(0.412390917540, 0.357584357262, 0.180480793118),
+    vec3(0.212639078498, 0.715168714523, 0.072192311287),
+    vec3(0.019330825657, 0.119194783270, 0.950532138348)
+);
+
 const mat3 matrix_rec2020_to_xyz = mat3(
-    vec3(0.636958122253f, 0.144616916776f, 0.168880969286f),
-    vec3(0.262700229883f, 0.677998125553f, 0.059301715344f),
-    vec3(0.000000000000f, 0.028072696179, 1.060985088348f)
+    vec3(0.636958122253, 0.144616916776, 0.168880969286),
+    vec3(0.262700229883, 0.677998125553, 0.059301715344),
+    vec3(0.000000000000, 0.028072696179, 1.060985088348)
 );
 
 const mat3 in_to_xyz = matrix_rec2020_to_xyz;
 mat3 xyz_to_display = inverse(matrix_rec2020_to_xyz);
 mat3 xyz_to_in = xyz_to_display;
-const mat3 display_to_xyz = matrix_rec2020_to_xyz;
+const mat3 display_to_xyz = in_to_xyz;
 
 /* Math helper functions ----------------------------*/
 
@@ -49,6 +59,10 @@ vec3 sdivf3f3(vec3 a, vec3 b) {
 // Safe power function raising vec3 a to power float b
 vec3 spowf3(vec3 a, float b) { return vec3(spowf(a.x, b), spowf(a.y, b), spowf(a.z, b)); }
 
+#ifndef exp10
+#define exp10(x) pow(10.0, x)
+#endif
+
 #define maxf3 max_of
 #define minf3 min_of
 
@@ -64,6 +78,61 @@ vec3 clampf3(vec3 a, float mn, float mx) {
 }
 
 
+/* OETF Linearization Transfer Functions ---------------------------------------- */
+
+float oetf_davinci_intermediate(float x) {
+    return x <= 0.02740668 ? x / 10.44426855 : exp2(x / 0.07329248 - 7.0) - 0.0075;
+}
+
+float oetf_filmlight_tlog(float x) {
+    return x < 0.075 ? (x - 0.075) / 16.184376489665897 : exp((x - 0.5520126568606655) / 0.09232902596577353) - 0.0057048244042473785;
+}
+
+float oetf_arri_logc3(float x) {
+    return x < 5.367655 * 0.010591 + 0.092809 ? (x - 0.092809) / 5.367655 : (exp10((x - 0.385537) / 0.247190) - 0.052272) / 5.555556;
+}
+
+float oetf_arri_logc4(float x) {
+    return x < -0.7774983977293537 ? x * 0.3033266726886969 - 0.7774983977293537 : (exp2(14.0 * (x - 0.09286412512218964) / 0.9071358748778103 + 6.0) - 64.0) / 2231.8263090676883;
+}
+
+float oetf_panasonic_vlog(float x) {
+    return x < 0.181 ? (x - 0.125) / 5.6 : exp10((x - 0.598206) / 0.241514) - 0.00873;
+}
+
+float oetf_sony_slog3(float x) {
+    return x < 171.2102946929 / 1023.0 ? (x * 1023.0 - 95.0) * 0.01125 / (171.2102946929 - 95.0) : (exp10(((x * 1023.0 - 420.0) / 261.5)) * (0.18 + 0.01) - 0.01);
+}
+
+float oetf_fujifilm_flog(float x) {
+  return x < 0.1005377752 ? (x - 0.092864) / 8.735631 : (exp10(((x - 0.790453) / 0.344676)) / 0.555556 - 0.009468 / 0.555556);
+}
+
+
+vec3 linearize(vec3 rgb, int tf) {
+    if (tf == 0) { // Linear
+        return rgb;
+    } else if (tf == 1) { // Davinci Intermediate
+        rgb = vec3(oetf_davinci_intermediate(rgb.x), oetf_davinci_intermediate(rgb.y), oetf_davinci_intermediate(rgb.z));
+    } else if (tf == 2) { // Filmlight T-Log
+        rgb = vec3(oetf_filmlight_tlog(rgb.x), oetf_filmlight_tlog(rgb.y), oetf_filmlight_tlog(rgb.z));
+    } else if (tf == 3) { // Arri LogC3
+        rgb = vec3(oetf_arri_logc3(rgb.x), oetf_arri_logc3(rgb.y), oetf_arri_logc3(rgb.z));
+    } else if (tf == 4) { // Arri LogC4
+        rgb = vec3(oetf_arri_logc4(rgb.x), oetf_arri_logc4(rgb.y), oetf_arri_logc4(rgb.z));
+    } else if (tf == 5) { // Panasonic V-Log
+        rgb = vec3(oetf_panasonic_vlog(rgb.x), oetf_panasonic_vlog(rgb.y), oetf_panasonic_vlog(rgb.z));
+    } else if (tf == 6) { // Sony S-Log3
+        rgb = vec3(oetf_sony_slog3(rgb.x), oetf_sony_slog3(rgb.y), oetf_sony_slog3(rgb.z));
+    } else if (tf == 7) { // Fuji F-Log
+        rgb = vec3(oetf_fujifilm_flog(rgb.x), oetf_fujifilm_flog(rgb.y), oetf_fujifilm_flog(rgb.z));
+    }
+    return rgb;
+}
+
+
+
+/* EOTF Transfer Functions ---------------------------------------- */
 
 vec3 eotf_hlg(vec3 rgb, int inverse) {
   /* Apply the HLG Forward or Inverse EOTF. Implements the full ambient surround illumination model
@@ -79,11 +148,11 @@ vec3 eotf_hlg(vec3 rgb, int inverse) {
     const float h_a = 0.17883277;
     const float h_b = 1.0 - 4.0 * 0.17883277;
     const float h_c = 0.5 - h_a * log(4.0 * h_a);
-    const float h_g = 1.2 * pow(1.111, log2(HLG_Lw / 1000.0)) * pow(0.98, log2(max(1e-6, HLG_Ls) / 5.0));
+    const float h_g = 1.2 * spowf(1.111, log2(HLG_Lw / 1000.0)) * spowf(0.98, log2(max(1e-6, HLG_Ls) / 5.0));
     if (inverse == 1) {
         float Yd = dot(rgb, vec3(0.2627, 0.6780, 0.0593));
         // HLG Inverse OOTF
-        rgb = rgb * pow(Yd, (1.0 - h_g) / h_g);
+        rgb = rgb * spowf(Yd, (1.0 - h_g) / h_g);
         // HLG OETF
         rgb.x = rgb.x <= 1.0 / 12.0 ? sqrt(3.0 * rgb.x) : h_a * log(12.0 * rgb.x - h_b) + h_c;
         rgb.y = rgb.y <= 1.0 / 12.0 ? sqrt(3.0 * rgb.y) : h_a * log(12.0 * rgb.y - h_b) + h_c;
@@ -95,7 +164,7 @@ vec3 eotf_hlg(vec3 rgb, int inverse) {
         rgb.z = rgb.z <= 0.5 ? rgb.z * rgb.z / 3.0 : (exp((rgb.z - h_c) / h_a) + h_b) / 12.0;
         // HLG OOTF
         float Ys = dot(rgb, vec3(0.2627, 0.6780, 0.0593));
-        rgb = rgb * pow(Ys, h_g - 1.0);
+        rgb = rgb * spowf(Ys, h_g - 1.0);
     }
     return rgb;
 }
