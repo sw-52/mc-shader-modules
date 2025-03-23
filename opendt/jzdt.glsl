@@ -347,7 +347,7 @@ vec3 jzdtransform(vec3 rgb) {
             rgb = eotf_pq(rgb, 0, 0);
         } else if (eotf == 5) {
             rgb = eotf_hlg(rgb, 0);
-        }*/
+        }
         rgb /= ds;
         vec3 xyz = rgb * display_to_xyz;
         vec3 lms = xyz_to_jzlms(xyz);

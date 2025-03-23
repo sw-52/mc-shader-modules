@@ -19,14 +19,26 @@ const mat3 matrix_rec709_to_xyz = mat3(
     vec3(0.019330825657, 0.119194783270, 0.950532138348)
 );
 
+const mat3 matrix_p3d65_to_xyz = mat3(
+    vec3(0.486571133137, 0.265667706728, 0.198217317462),
+    vec3(0.228974640369, 0.691738605499, 0.079286918044),
+    vec3(0.0, 0.045113388449, 1.043944478035)
+);
+const mat3 matrix_xyz_to_p3d65 = mat3(
+    vec3(2.49349691194, -0.931383617919, -0.402710784451),
+    vec3(-0.829488969562, 1.76266406032, 0.023624685842),
+    vec3(0.035845830244, -0.076172389268, 0.956884524008)
+);
+
+
 const mat3 matrix_rec2020_to_xyz = mat3(
     vec3(0.636958122253, 0.144616916776, 0.168880969286),
     vec3(0.262700229883, 0.677998125553, 0.059301715344),
-    vec3(0.000000000000, 0.028072696179, 1.060985088348)
+    vec3(0.0, 0.028072696179, 1.060985088348)
 );
 
-const mat3 in_to_xyz = matrix_rec2020_to_xyz;
-mat3 xyz_to_display = inverse(matrix_rec2020_to_xyz);
+const mat3 in_to_xyz = matrix_rec709_to_xyz;
+mat3 xyz_to_display = inverse(matrix_rec709_to_xyz);
 mat3 xyz_to_in = xyz_to_display;
 const mat3 display_to_xyz = in_to_xyz;
 
