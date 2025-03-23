@@ -4,7 +4,7 @@
 
 
 /*  OpenDRT -------------------------------------------------/
-      v0.3.4
+      v0.3.5
       Written by Jed Smith
       https://github.com/jedypod/open-display-transform
 
@@ -329,6 +329,12 @@ vec3 opendrtransform_v035(vec3 rgb) {
     norm = hyperbolic_compress(norm, m, s, p, 0);
     norm = quadratic_toe_compress(norm, toe, 0) / py;
 
+    // "Density" - scale down intensity to better fit in display-referred gamut volume 
+    // and reduce discontinuities in high intensity high purity values.
+    vec3 dn_r = clampminf3(1.0 - rgb, 0.0);
+    // rgb = rgb * (dn_w.x * dn_r.x + 1.0 - dn_r.x) * (dn_w.y * dn_r.y + 1.0 - dn_r.y) * (dn_w.z * dn_r.z + 1.0 - dn_r.z);
+    vec3 dn_wr = (dn_w * dn_r + 1.0 - dn_r);
+    rgb *= dn_wr.x * dn_wr.y * dn_wr.z;
 
     /* Purity Compression --------------------------------------- */
     // Apply purity compress using pcf by lerping to 1.0 in rgb ratios (peak achromatic)
@@ -337,19 +343,13 @@ vec3 opendrtransform_v035(vec3 rgb) {
     rgb = rgb * pcf + (1.0 - pcf);
 
     if (!base_look) {
+
         // Apply purity boost
         float pb_f = norm * (pb_m1 - pb_m0) + pb_m0;
         // Lerp from weights on bottom end to 1.0 at top end of tonescale
         float pb_L = dot(rgb, vec3(0.25, 0.7, 0.05)) * (1.0 - norm) + norm;
         float rats_mn = max(0.0, minf3(rgb));
         rgb = (rgb * pb_f + pb_L * (1.0 - pb_f)) * rats_mn + rgb * (1.0 - rats_mn);
-
-        // "Density" - scale down intensity of colors to better fit in display-referred gamut volume 
-        // and reduce discontinuities in high intensity high purity tristimulus.
-        vec3 dn_r = clampminf3(1.0 - rgb, 0.0);
-        // rgb = rgb * (dn_w.x * dn_r.x + 1.0 - dn_r.x) * (dn_w.y * dn_r.y + 1.0 - dn_r.y) * (dn_w.z * dn_r.z + 1.0 - dn_r.z);
-        vec3 dn_wr = (dn_w * dn_r + 1.0 - dn_r);
-        rgb *= dn_wr.x * dn_wr.y * dn_wr.z;
 
         /* Purity Compression Hue Shift ------------------------------------------ *
             Since we compress purity by lerping in a straight line towards 1.0 in rgb ratios, this can result in perceptual hue shifts
