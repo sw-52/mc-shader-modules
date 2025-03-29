@@ -56,34 +56,6 @@ float hyperbolic_compress(float x, float m, float s, float p, int inv) {
     }
 }*/
 
-float tonescale(float x, const float Lp, const float Lg, const float Lgb, const float p, const float toe, int inv) {
-    // input scene-linear peak x intercept
-    const float px = 256.0 * log(Lp) / log(100.0) - 128.0;
-    // output display-linear peak y intercept
-    const float py = Lp / 100.0;
-    // input scene-linear middle grey x intercept
-    const float gx = 0.18;
-    // output display-linear middle grey y intercept
-    const float gy = Lg / 100.0 * (1.0 + Lgb * log(py) / log(2.0));
-    // s0 and s are input x scale for middle grey intersection constraint
-    // m0 and m are output y scale for peak white intersection constraint
-    const float s0 = quadratic_toe_compress(gy, toe, 1);
-    const float m0 = quadratic_toe_compress(py, toe, 1);
-    const float ip = 1.0 / p;
-    const float s1 = pow(s0, ip);
-    const float m1 = pow(m0, ip);
-    const float s = (px * gx * (m1 - s1)) / (px * s1 - gx * m1);
-    const float m = m1 * (s + px) / px;
-
-    if (inv == 0) {
-        x = hyperbolic_compress(x, m, s, p, 0);
-        return quadratic_toe_compress(x, toe, 0) / py;
-    } else {
-        x = quadratic_toe_compress(x * py, toe, 1);
-        return hyperbolic_compress(x, m, s, p, 1);
-    }
-}
-
 
 
 #endif // MODULES_OPENDT_OPENDRT_COMMON

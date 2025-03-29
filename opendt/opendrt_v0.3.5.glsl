@@ -174,31 +174,6 @@ vec3 opendrtransform_v035(vec3 rgb) {
     rgb = clampminf3(rgb, 0.0); // Prevent bright pixels from crazy values in shadow grain
 
 
-    /* Purity Compression --------------------------------------- */
-    // rgb purity compression strength, tuned for common camera gamuts
-    /*vec3 pc_rats = rgb; TODO: Remove
-
-    // minrgb with out of gamut values compressed
-    pc_rats.x = compress_powerptoe_p(pc_rats.x, 0.25, 0.06, 1.0, 0);
-    pc_rats.y = compress_powerptoe_p(pc_rats.y, 0.25, 0.2, 1.0, 0);
-    pc_rats.z = compress_powerptoe_p(pc_rats.z, 0.25, 0.06, 1.0, 0);
-
-    // minrgb with out of gamut values compressed
-    float pc_rats_mn = minf3(pc_rats);
-
-    // remove achromatic
-    pc_rats = pc_rats - pc_rats_mn;
-    // restore full range for tonescale curve
-    pc_rats_mn = max(pc_rats_mn, 0.0) * norm;
-
-    // the factor to mix back to maxrgb
-    vec3 pc_s = vec3(0.04, 0.2, 0.08);
-    float pc_f = dot(pc_s, pc_rats);
-
-    // minrgb mix to maxrgb by pc_f
-    float ccf = max(0.0, pc_rats_mn * (1.0 - pc_f) + norm * pc_f);*/
-
-
     /* Tonescale Parameters
           ----------------------
         For the tonescale compression function, we use one inspired by the wisdom shared by Daniele Siragusano
