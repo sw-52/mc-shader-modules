@@ -105,15 +105,15 @@ vec3 eotf_pq(vec3 rgb, int inverse, int jz) {
 
     float Lp = 1.0; // We normalize for hdr peak display luminance elsewhere.
     const float m1 = 2610.0 / 16384.0;
-    float m2 = 2523.0 / 32.0f;
-    const float c1 = 107.0f / 128.0f;
-    const float c2 = 2413.0f / 128.0f;
-    const float c3 = 2392.0f / 128.0f;
+    float m2 = 2523.0 / 32.0;
+    const float c1 = 107.0 / 128.0;
+    const float c2 = 2413.0 / 128.0;
+    const float c3 = 2392.0 / 128.0;
     
     // Custom values for JzAzBz colorspace
     if (jz == 1) {
-        m2 *= 1.7f;
-        //Lp = 10000.0f;
+        m2 *= 1.7;
+        Lp = 10000.0;
     }
 
     if (inverse == 1) {
@@ -124,10 +124,10 @@ vec3 eotf_pq(vec3 rgb, int inverse, int jz) {
         rgb.y = sign(rgb.y) * pow((c1 + c2 * abs(rgb.y)) / (1.0f + c3 * abs(rgb.y)), m2);
         rgb.z = sign(rgb.z) * pow((c1 + c2 * abs(rgb.z)) / (1.0f + c3 * abs(rgb.z)), m2);
     } else {
-        rgb = spowr3(rgb, 1.0f / m2);
-        rgb.x = sign(rgb.x) * pow((abs(rgb.x) - c1) / (c2 - c3 * abs(rgb.x)), 1.0f / m2) * Lp;
-        rgb.y = sign(rgb.y) * pow((abs(rgb.y) - c1) / (c2 - c3 * abs(rgb.y)), 1.0f / m2) * Lp;
-        rgb.z = sign(rgb.z) * pow((abs(rgb.z) - c1) / (c2 - c3 * abs(rgb.z)), 1.0f / m2) * Lp;
+        rgb = spowr3(rgb, 1.0 / m2);
+        rgb.x = sign(rgb.x) * pow((abs(rgb.x) - c1) / (c2 - c3 * abs(rgb.x)), 1.0 / m1) * Lp;
+        rgb.y = sign(rgb.y) * pow((abs(rgb.y) - c1) / (c2 - c3 * abs(rgb.y)), 1.0 / m1) * Lp;
+        rgb.z = sign(rgb.z) * pow((abs(rgb.z) - c1) / (c2 - c3 * abs(rgb.z)), 1.0 / m1) * Lp;
     }
     return rgb;
 }
@@ -160,22 +160,24 @@ vec3 polar_to_cartesian3(vec3 a) {
 */
 
 const mat3 matrix_jzazbz_xyz_to_lms = mat3(
-    vec3(0.41479f, 0.579999f, 0.014648f),
-    vec3(-0.20151f, 1.12065f, 0.0531008f),
-    vec3(-0.0166008f, 0.2648f, 0.66848f)
+    vec3(0.41479, 0.579999, 0.014648),
+    vec3(-0.20151, 1.12065, 0.0531008),
+    vec3(-0.0166008, 0.2648, 0.66848)
 );
 const mat3 matrix_jzazbz_lms_p_to_izazbz = mat3(
-    vec3(0.5f, 0.5f, 0.0f),
-    vec3(3.524f, -4.06671f, 0.542708f),
-    vec3(0.199076f, 1.0968f, -1.29588f)
+    vec3(0.5, 0.5, 0.0),
+    vec3(3.524, -4.06671, 0.542708),
+    vec3(0.199076, 1.0968, -1.29588)
 );
 
 
 vec3 xyz_to_jzlms(vec3 xyz) {
     vec3 lms;
-    lms = vec3(1.15f * xyz.x - (1.15f - 1.0f) * xyz.z,
-    0.66f * xyz.y - (0.66f - 1.0f) * xyz.x,
-    xyz.z);
+    lms = vec3(
+        1.15 * xyz.x - (1.15 - 1.0) * xyz.z,
+        0.66 * xyz.y - (0.66 - 1.0) * xyz.x,
+        xyz.z
+    );
     lms = lms * matrix_jzazbz_xyz_to_lms;
     return lms;
 }
@@ -184,8 +186,8 @@ vec3 jzlms_to_xyz(vec3 lms) {
     vec3 xyz;
     xyz = lms * inverse(matrix_jzazbz_xyz_to_lms);
     xyz = vec3(
-        (xyz.x + (1.15f - 1.0f) * xyz.z) / 1.15f,
-        (xyz.y + (0.66f - 1.0f) * ((xyz.x + (1.15f - 1.0f) * xyz.z) / 1.15f)) / 0.66f,
+        (xyz.x + (1.15 - 1.0) * xyz.z) / 1.15,
+        (xyz.y + (0.66 - 1.0) * ((xyz.x + (1.15 - 1.0) * xyz.z) / 1.15)) / 0.66,
         xyz.z
     );
     return xyz;
@@ -239,8 +241,8 @@ float compress_parabolic(float x, float t0, float x0, float y0) {
       https://www.desmos.com/calculator/khowxlu6xh
     */
     float s = (y0 - t0) / sqrt(x0 - y0);
-    float ox = t0 - s * s / 4.0f;
-    float oy = t0 - s * sqrt(s * s / 4.0f);
+    float ox = t0 - s * s / 4.0;
+    float oy = t0 - s * sqrt(s * s / 4.0);
 
     return (x < t0 ? x : s * sqrt(x - ox) + oy);
 }
@@ -317,12 +319,12 @@ vec3 jzdtransform(vec3 rgb) {
 
         #ifdef JZDT_PERCEPTUAL_DECHROMA
             vec3 jz = xyz_to_jzazbz(xyz, 1);
-            /*#ifdef JZDT_GAMUT_COMPRESS
+            #ifdef JZDT_GAMUT_COMPRESS
                 jz.y = compress_parabolic(jz.y, 0.015f, 0.05f, 0.03f);
             #endif
             vec3 xyz_ndc = jzlms_to_xyz(lms);
-            vec3 jz_ndc = xyz_to_jzazbz(xyz_ndc, 1);*/
-            //jz.z = jz_ndc.z;
+            vec3 jz_ndc = xyz_to_jzazbz(xyz_ndc, 1);
+            jz.z = jz_ndc.z;
             xyz = jzazbz_to_xyz(jz, 1);
         #endif
 
